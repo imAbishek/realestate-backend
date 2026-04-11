@@ -1,0 +1,31 @@
+# ─── Build output ───────────────────────────
+target/
+*.jar
+*.war
+*.class
+
+# ─── Secrets — NEVER commit these ───────────
+.env
+*.pem
+*.key
+*.p12
+*.jks
+
+# ─── IDE files ───────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+.settings/
+
+# ─── OS files ────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Logs ────────────────────────────────────
+logs/
+*.log
+
+# ─── Maven wrapper cache ─────────────────────
+.mvn/wrapper/maven-wrapper.jar
