@@ -70,9 +70,10 @@ public class AppProperties {
         private String allowedOrigins;
 
         public String[] getAllowedOriginsArray() {
-            return allowedOrigins != null
-                ? allowedOrigins.split(",")
-                : new String[]{};
+            if (allowedOrigins == null) return new String[]{};
+            return java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(s -> s.trim().replaceAll("/+$", ""))
+                .toArray(String[]::new);
         }
     }
 
