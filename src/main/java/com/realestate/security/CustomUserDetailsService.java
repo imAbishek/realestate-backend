@@ -23,11 +23,14 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new UsernameNotFoundException(
-                "No account found with email: " + email
-            ));
+    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+        // identifier is either an email address or a 10-digit Indian phone number
+        boolean isPhone = identifier.matches("^[6-9]\\d{9}$");
+        User user = isPhone
+            ? userRepository.findByPhone(identifier)
+                .orElseThrow(() -> new UsernameNotFoundException("No account found with phone: " + identifier))
+            : userRepository.findByEmail(identifier)
+                .orElseThrow(() -> new UsernameNotFoundException("No account found with email: " + identifier));
 
         // Convert our Role enum into Spring Security's GrantedAuthority
         // ROLE_ prefix is required by Spring Security conventions

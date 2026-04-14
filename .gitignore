@@ -23,6 +23,9 @@ target/
 .DS_Store
 Thumbs.db
 
+# ─── Local image uploads (dev only) ─────────
+uploads/
+
 # ─── Logs ────────────────────────────────────
 logs/
 *.log

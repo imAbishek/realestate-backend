@@ -12,8 +12,9 @@
 com/realestate/
 ├── RealEstateApplication.java          # @EnableCaching @EnableScheduling @EnableJpaAuditing
 ├── config/
-│   ├── AppProperties.java              # Binds all app.* properties
+│   ├── AppProperties.java              # Binds all app.* properties (incl. app.aws.endpoint)
 │   ├── CorsConfig.java                 # CORS from app.cors.allowed-origins
+│   ├── S3Config.java                   # S3Client bean — prod profile only; supports MinIO via endpoint override
 │   ├── SecurityConfig.java             # JWT filter chain, route access rules
 │   └── WebMvcConfig.java               # Serves /uploads/** from local filesystem
 ├── controller/
@@ -52,9 +53,11 @@ com/realestate/
 │   ├── JwtAuthFilter.java              # Intercepts every request
 │   └── CustomUserDetailsService.java   # Loads user by email for Spring Security
 └── service/
-    ├── AuthService.java                # register, login, OTP, password reset
-    ├── PropertyService.java            # Full CRUD, search, image mgmt
-    ├── ImageUploadService.java         # S3/MinIO upload + delete
+    ├── AuthService.java                # register (defaults role=BUYER), login (email or phone identifier)
+    ├── PropertyService.java            # Full CRUD, search, image mgmt — injects StorageService
+    ├── StorageService.java             # Interface: uploadPropertyImage / deleteImage / deleteAllPropertyImages
+    ├── ImageUploadService.java         # StorageService impl — dev profile (!prod), local filesystem
+    ├── S3StorageService.java           # StorageService impl — prod profile, S3-compatible (AWS or R2/MinIO)
     └── EmailService.java               # OTP + inquiry notification emails (async)
 ```
 
@@ -87,10 +90,19 @@ Public (no token):
 Admin only:  /admin/**
 Everything else: requires valid JWT Bearer token
 
-## Local image storage
-- WebMvcConfig serves files at GET /uploads/**
-- Upload dir configured via: app.storage.upload-dir=uploads
-- Files stored at: realestate-backend/uploads/properties/{id}/filename
+## Image storage
+Two `StorageService` implementations selected by Spring profile:
+- **Dev** (`@Profile("!prod")`): `ImageUploadService` — saves to disk, `WebMvcConfig` serves at `/uploads/**`. Upload dir: `app.storage.upload-dir=uploads`.
+- **Prod** (`@Profile("prod")`): `S3StorageService` — uploads to S3-compatible store (Cloudflare R2 in prod). Configured via env vars:
+  - `MINIO_ENDPOINT` — set to R2/MinIO endpoint URL; blank = use real AWS S3
+  - `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` / `MINIO_BUCKET`
+  - When `MINIO_ENDPOINT` is set, `S3Config` adds `.endpointOverride()` + `pathStyleAccessEnabled(true)` to the `S3Client`
+  - Image URL format: `{endpoint}/{bucket}/properties/{id}/{uuid}.{ext}`
+
+## Auth identifier resolution
+`LoginRequest.identifier` accepts email or 10-digit Indian mobile (`^[6-9]\\d{9}$`).
+`AuthService.login()` and `CustomUserDetailsService.loadUserByUsername()` both detect the format and route to `findByEmail()` or `findByPhone()`.
+Registration always sets `role = BUYER` — no role field in `RegisterRequest`.
 
 ## Coding rules
 - Use Lombok: @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor on entities

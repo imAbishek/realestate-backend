@@ -3,6 +3,7 @@ package com.realestate.service;
 import com.realestate.exception.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,13 +15,17 @@ import java.util.List;
 import java.util.UUID;
 
 /**
+ * LOCAL storage implementation — active in dev profile only.
  * Saves uploaded property images to local disk and returns a public URL.
  * Files are stored at: {upload-dir}/properties/{propertyId}/{uuid}.{ext}
  * Served by Spring at:  GET /uploads/properties/{propertyId}/{filename}
+ *
+ * In prod, S3StorageService takes over instead.
  */
 @Service
+@Profile("!prod")
 @Slf4j
-public class ImageUploadService {
+public class ImageUploadService implements StorageService {
 
     private static final long         MAX_FILE_SIZE  = 10 * 1024 * 1024L; // 10 MB
     private static final List<String> ALLOWED_TYPES  = List.of(

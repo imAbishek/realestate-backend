@@ -28,7 +28,7 @@ public class PropertyService {
     private final LocalityRepository      localityRepository;
     private final AmenityRepository       amenityRepository;
     private final UserRepository          userRepository;
-    private final ImageUploadService      imageUploadService;
+    private final StorageService          imageUploadService;
     private final EmailService            emailService;
 
     private static final int MAX_IMAGES_PER_PROPERTY = 20;

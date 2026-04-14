@@ -43,18 +43,15 @@ public class AuthDtos {
             message = "Password must contain at least one letter"
         )
         private String password;
-
-        // Optional — defaults to BUYER if not provided
-        private User.Role role;
     }
 
     /** POST /auth/login */
     @Data
     public static class LoginRequest {
 
-        @NotBlank(message = "Email is required")
-        @Email(message = "Please enter a valid email address")
-        private String email;
+        /** Accepts either an email address or a 10-digit Indian mobile number */
+        @NotBlank(message = "Email or phone number is required")
+        private String identifier;
 
         @NotBlank(message = "Password is required")
         private String password;

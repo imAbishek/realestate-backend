@@ -37,13 +37,20 @@ public class AppProperties {
     }
 
     // ─────────────────────────────────────────────
-    // AWS S3
+    // AWS S3 / MinIO
     // ─────────────────────────────────────────────
     @Data
     public static class Aws {
         private String accessKey;
         private String secretKey;
         private String region;
+        /**
+         * Optional custom S3 endpoint — set this to use MinIO instead of AWS.
+         * Example: http://localhost:9000  (dev MinIO)
+         *          http://your-server-ip:9000  (prod MinIO)
+         * Leave blank to use real AWS S3.
+         */
+        private String endpoint;
         private final S3 s3 = new S3();
 
         @Data

@@ -52,13 +52,13 @@ public class AuthService {
             throw new ConflictException("An account with this phone number already exists");
         }
 
-        // 2. Build and save the user
+        // 2. Build and save the user — all new accounts start as BUYER
         User user = User.builder()
             .name(req.getName())
             .email(req.getEmail().toLowerCase().trim())
             .phone(req.getPhone())
             .passwordHash(passwordEncoder.encode(req.getPassword()))
-            .role(req.getRole() != null ? req.getRole() : User.Role.BUYER)
+            .role(User.Role.BUYER)
             .verified(false)
             .active(true)
             .build();
@@ -87,19 +87,26 @@ public class AuthService {
     @Transactional
     public AuthResponse login(LoginRequest req) {
 
-        String email = req.getEmail().toLowerCase().trim();
+        String raw = req.getIdentifier().trim();
+        // Phone: starts with 6-9, exactly 10 digits (Indian numbers)
+        boolean isPhone = raw.matches("^[6-9]\\d{9}$");
+        String identifier = isPhone ? raw : raw.toLowerCase();
 
-        // Spring Security handles password check + locked/disabled checks
+        // Spring Security calls CustomUserDetailsService.loadUserByUsername(identifier)
+        // which resolves phone or email to the correct user record
         try {
             authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, req.getPassword())
+                new UsernamePasswordAuthenticationToken(identifier, req.getPassword())
             );
         } catch (BadCredentialsException e) {
-            throw new UnauthorizedException("Invalid email or password");
+            throw new UnauthorizedException("Invalid credentials");
         }
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+        User user = isPhone
+            ? userRepository.findByPhone(identifier)
+                .orElseThrow(() -> new UnauthorizedException("Invalid credentials"))
+            : userRepository.findByEmail(identifier)
+                .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
         if (!user.isActive()) {
             throw new UnauthorizedException("Your account has been deactivated. Contact support.");
@@ -108,7 +115,7 @@ public class AuthService {
         // Update last login timestamp (non-blocking — best effort)
         userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
 
-        log.info("User logged in: {}", user.getEmail());
+        log.info("User logged in: {} (via {})", user.getEmail(), isPhone ? "phone" : "email");
         return buildAuthResponse(user);
     }
 
