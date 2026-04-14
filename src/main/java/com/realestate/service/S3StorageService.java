@@ -50,9 +50,9 @@ public class S3StorageService implements StorageService {
         String publicUrl = aws.getPublicUrl();
 
         if (publicUrl != null && !publicUrl.isBlank()) {
-            // Explicit public URL (e.g. Cloudflare R2 pub-xxx.r2.dev)
-            // Upload goes to endpoint; browser loads from publicUrl
-            this.imageBaseUrl = publicUrl.stripTrailing() + "/" + bucket;
+            // R2 pub URL: bucket is implicit — path is just the key, no bucket prefix
+            // e.g. https://pub-xxx.r2.dev/properties/{id}/{file}  (NOT /bucket/properties/...)
+            this.imageBaseUrl = publicUrl.stripTrailing();
             log.info("S3StorageService active (R2/CDN) — api: {}, public: {}, bucket: {}", endpoint, publicUrl, bucket);
         } else if (endpoint != null && !endpoint.isBlank()) {
             // MinIO self-hosted — same host serves both API and public reads
