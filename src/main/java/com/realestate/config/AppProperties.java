@@ -45,12 +45,18 @@ public class AppProperties {
         private String secretKey;
         private String region;
         /**
-         * Optional custom S3 endpoint — set this to use MinIO instead of AWS.
-         * Example: http://localhost:9000  (dev MinIO)
-         *          http://your-server-ip:9000  (prod MinIO)
-         * Leave blank to use real AWS S3.
+         * S3 API endpoint for upload/delete operations.
+         * R2/MinIO: https://account.r2.cloudflarestorage.com or http://localhost:9000
+         * Leave blank for real AWS S3.
          */
         private String endpoint;
+        /**
+         * Public base URL for serving images in the browser.
+         * R2: https://pub-xxxxx.r2.dev
+         * MinIO self-hosted: same as endpoint (e.g. http://server:9000)
+         * Leave blank to derive from endpoint or AWS bucket URL.
+         */
+        private String publicUrl;
         private final S3 s3 = new S3();
 
         @Data

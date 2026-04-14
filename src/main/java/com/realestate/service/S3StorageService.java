@@ -46,13 +46,20 @@ public class S3StorageService implements StorageService {
         AppProperties.Aws aws = appProperties.getAws();
         this.bucket = aws.getS3().getBucketName();
 
-        String endpoint = aws.getEndpoint();
-        if (endpoint != null && !endpoint.isBlank()) {
-            // MinIO path-style URL: http://{endpoint}/{bucket}/{key}
+        String endpoint  = aws.getEndpoint();
+        String publicUrl = aws.getPublicUrl();
+
+        if (publicUrl != null && !publicUrl.isBlank()) {
+            // Explicit public URL (e.g. Cloudflare R2 pub-xxx.r2.dev)
+            // Upload goes to endpoint; browser loads from publicUrl
+            this.imageBaseUrl = publicUrl.stripTrailing() + "/" + bucket;
+            log.info("S3StorageService active (R2/CDN) — api: {}, public: {}, bucket: {}", endpoint, publicUrl, bucket);
+        } else if (endpoint != null && !endpoint.isBlank()) {
+            // MinIO self-hosted — same host serves both API and public reads
             this.imageBaseUrl = endpoint + "/" + bucket;
             log.info("S3StorageService active (MinIO) — endpoint: {}, bucket: {}", endpoint, bucket);
         } else {
-            // AWS S3 virtual-hosted URL: https://{bucket}.s3.{region}.amazonaws.com/{key}
+            // AWS S3 virtual-hosted URL
             this.imageBaseUrl = "https://%s.s3.%s.amazonaws.com".formatted(bucket, aws.getRegion());
             log.info("S3StorageService active (AWS S3) — bucket: {}, region: {}", bucket, aws.getRegion());
         }
