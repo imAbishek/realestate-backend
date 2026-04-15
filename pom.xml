@@ -77,14 +77,17 @@
             <version>10.10.0</version>
         </dependency>
 
-        <!-- CACHING - Redis -->
+        <!-- CACHING — in-memory (no Redis dependency needed) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
+
+        <!-- RATE LIMITING — in-memory, no external store required -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
         </dependency>
 
         <!-- SECURITY + JWT -->
