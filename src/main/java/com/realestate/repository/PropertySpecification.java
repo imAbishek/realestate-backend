@@ -90,7 +90,7 @@ public class PropertySpecification {
                 predicates.add(cb.isTrue(root.get("isFeatured")));
             }
 
-            // ── Keyword search (title or description) ─────
+            // ── Keyword search (title, description, or city name) ─────
             if (req.getKeyword() != null && !req.getKeyword().isBlank()) {
                 String pattern = "%" + req.getKeyword().toLowerCase() + "%";
                 Predicate titleMatch = cb.like(
@@ -99,7 +99,11 @@ public class PropertySpecification {
                 Predicate descMatch = cb.like(
                     cb.lower(root.get("description")), pattern
                 );
-                predicates.add(cb.or(titleMatch, descMatch));
+                // Also match city name so typing "Coimbatore" in search finds city properties
+                Join<Object, Object> kwLocality = root.join("locality", JoinType.LEFT);
+                Join<Object, Object> kwCity = kwLocality.join("city", JoinType.LEFT);
+                Predicate cityNameMatch = cb.like(cb.lower(kwCity.get("name")), pattern);
+                predicates.add(cb.or(titleMatch, descMatch, cityNameMatch));
             }
 
             // Avoid N+1 on images fetch for listing cards

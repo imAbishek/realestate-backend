@@ -4,7 +4,7 @@
 - Java 17, Spring Boot 3.2.5, Maven
 - Spring Security + JWT (stateless, no sessions)
 - Spring Data JPA + Hibernate, PostgreSQL, Flyway migrations
-- Redis caching, AWS S3 / MinIO for image storage
+- Spring Cache (in-memory, `spring.cache.type=simple` — Redis removed), AWS S3 / MinIO for image storage
 - SpringDoc OpenAPI (Swagger UI at /api/swagger-ui.html in dev)
 
 ## Exact package structure (as of current codebase)
@@ -66,7 +66,10 @@ com/realestate/
 - Flyway migrations auto-run on startup — src/main/resources/db/migration/
   - V1__create_users_table.sql
   - V2__create_property_tables.sql
-- New schema changes → new file V3__, V4__ etc. NEVER edit V1 or V2
+  - V3__fix_sort_order_column_type.sql
+  - V4__fix_enum_columns_to_varchar.sql
+  - V5__seed_remaining_localities.sql
+- New schema changes → new file V6__, V7__ etc. NEVER edit existing migration files
 
 ## Key enums (must stay in sync with frontend src/types/index.ts)
 - UserRole:         BUYER, SELLER, AGENT, ADMIN
