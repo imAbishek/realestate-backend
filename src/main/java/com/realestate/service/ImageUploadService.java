@@ -27,8 +27,13 @@ import java.util.UUID;
 @Slf4j
 public class ImageUploadService implements StorageService {
 
-    private static final long         MAX_FILE_SIZE  = 10 * 1024 * 1024L; // 10 MB
-    private static final List<String> ALLOWED_TYPES  = List.of(
+    private static final long         MAX_FILE_SIZE   = 10 * 1024 * 1024L; // 10 MB
+    private static final long         MAX_DOC_SIZE    = 15 * 1024 * 1024L; // 15 MB for PDFs
+    private static final List<String> ALLOWED_TYPES   = List.of(
+        "image/jpeg", "image/jpg", "image/png", "image/webp"
+    );
+    private static final List<String> ALLOWED_DOC_TYPES = List.of(
+        "application/pdf",
         "image/jpeg", "image/jpg", "image/png", "image/webp"
     );
 
@@ -136,7 +141,74 @@ public class ImageUploadService implements StorageService {
             case "image/jpeg", "image/jpg" -> "jpg";
             case "image/png"               -> "png";
             case "image/webp"              -> "webp";
+            case "application/pdf"         -> "pdf";
             default                        -> "jpg";
         };
+    }
+
+    // ─────────────────────────────────────────────
+    // Documents (PDF or image)
+    // ─────────────────────────────────────────────
+
+    @Override
+    public String uploadPropertyDocument(MultipartFile file, UUID propertyId) {
+        validateDocument(file);
+
+        String ext      = getExtension(file.getContentType());
+        String filename = UUID.randomUUID() + "." + ext;
+        Path   dir      = uploadRoot.resolve("documents").resolve(propertyId.toString());
+        Path   dest     = dir.resolve(filename);
+
+        try {
+            Files.createDirectories(dir);
+            file.transferTo(dest);
+            String url = "%s/uploads/documents/%s/%s".formatted(baseUrl, propertyId, filename);
+            log.info("Document saved: {}", url);
+            return url;
+        } catch (IOException e) {
+            log.error("Failed to save document for property {}: {}", propertyId, e.getMessage());
+            throw new RuntimeException("Document upload failed. Please try again.", e);
+        }
+    }
+
+    @Override
+    public void deleteDocument(String docUrl) {
+        // Same on-disk layout as deleteImage — both live under /uploads/
+        deleteImage(docUrl);
+    }
+
+    @Override
+    public void deleteAllPropertyDocuments(UUID propertyId) {
+        try {
+            Path dir = uploadRoot.resolve("documents").resolve(propertyId.toString());
+            if (Files.exists(dir)) {
+                try (var stream = Files.walk(dir)) {
+                    stream.sorted(java.util.Comparator.reverseOrder())
+                          .forEach(p -> { try { Files.delete(p); } catch (IOException ignored) {} });
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not clean documents for property {}: {}", propertyId, e.getMessage());
+        }
+    }
+
+    /** Dev: local filesystem is already served at /uploads/** — no signing needed. */
+    @Override
+    public String presignDownloadUrl(String storedUrl) {
+        return storedUrl;
+    }
+
+    @Override
+    public int presignedDownloadTtlSeconds() {
+        return 300;
+    }
+
+    private void validateDocument(MultipartFile file) {
+        if (file == null || file.isEmpty())
+            throw new BadRequestException("No file provided");
+        if (file.getSize() > MAX_DOC_SIZE)
+            throw new BadRequestException("File size exceeds 15 MB limit");
+        if (!ALLOWED_DOC_TYPES.contains(file.getContentType()))
+            throw new BadRequestException("Invalid document type. Only PDF, JPEG, PNG and WebP are allowed.");
     }
 }

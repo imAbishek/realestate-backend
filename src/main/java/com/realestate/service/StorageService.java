@@ -24,4 +24,26 @@ public interface StorageService {
      * Delete all images for a property (called on property deletion).
      */
     void deleteAllPropertyImages(UUID propertyId);
+
+    /**
+     * Upload a property verification document (PDF or image) and return its public URL.
+     * Stored under documents/{propertyId}/{uuid}.{ext}.
+     */
+    String uploadPropertyDocument(MultipartFile file, UUID propertyId);
+
+    /** Delete a single document by its URL. */
+    void deleteDocument(String docUrl);
+
+    /** Delete all documents for a property (called on property deletion). */
+    void deleteAllPropertyDocuments(UUID propertyId);
+
+    /**
+     * Convert a stored document URL into a short-lived signed download URL.
+     * Dev profile returns the URL unchanged (local filesystem is fine).
+     * Prod profile returns an S3 presigned GET URL with a 5-minute TTL.
+     */
+    String presignDownloadUrl(String storedUrl);
+
+    /** TTL (seconds) used for presigned download URLs. */
+    int presignedDownloadTtlSeconds();
 }

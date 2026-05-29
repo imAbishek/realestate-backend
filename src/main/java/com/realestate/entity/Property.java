@@ -148,6 +148,76 @@ public class Property {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // ── Wizard: who is listing? ───────────────────
+    @Enumerated(EnumType.STRING)
+    @Column(name = "listed_by", length = 20)
+    private ListedBy listedBy;
+
+    // ── Plot / Land fields ────────────────────────
+    @Column(name = "plot_length_ft", precision = 10, scale = 2)
+    private BigDecimal plotLengthFt;
+
+    @Column(name = "plot_breadth_ft", precision = 10, scale = 2)
+    private BigDecimal plotBreadthFt;
+
+    @Column(name = "plot_area_cents", precision = 10, scale = 4)
+    private BigDecimal plotAreaCents;
+
+    @Column(name = "road_width_ft", precision = 6, scale = 2)
+    private BigDecimal roadWidthFt;
+
+    @Column(name = "boundary_wall")
+    private Boolean boundaryWall;
+
+    @Column(name = "corner_plot")
+    private Boolean cornerPlot;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_authority", length = 20)
+    private ApprovalAuthority approvalAuthority;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ownership_type", length = 20)
+    private OwnershipType ownershipType;
+
+    // ── Agricultural land fields ──────────────────
+    @Enumerated(EnumType.STRING)
+    @Column(name = "soil_type", length = 20)
+    private SoilType soilType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "water_source", length = 20)
+    private WaterSource waterSource;
+
+    @Column(name = "has_well")
+    private Boolean hasWell;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "electric_service", length = 30)
+    private ElectricService electricService;
+
+    @Column(name = "crop_currently_grown", length = 200)
+    private String cropCurrentlyGrown;
+
+    @Column(name = "fenced")
+    private Boolean fenced;
+
+    // ── Promoter fields ───────────────────────────
+    @Column(name = "promoter_project_name", length = 200)
+    private String promoterProjectName;
+
+    @Column(name = "promoter_years_experience")
+    private Short promoterYearsExperience;
+
+    @Column(name = "promoter_total_projects")
+    private Short promoterTotalProjects;
+
+    @Column(name = "promoter_cities_active", columnDefinition = "TEXT")
+    private String promoterCitiesActive;
+
+    @Column(name = "promoter_rera_id", length = 60)
+    private String promoterReraId;
+
     // ── Relationships ─────────────────────────────
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
@@ -172,7 +242,7 @@ public class Property {
     public enum PropertyType {
         APARTMENT, INDEPENDENT_HOUSE, VILLA,
         PLOT, COMMERCIAL_OFFICE, COMMERCIAL_SHOP,
-        BUILDER_FLOOR, PG_HOSTEL
+        BUILDER_FLOOR, PG_HOSTEL, AGRICULTURAL_LAND
     }
 
     public enum FurnishingStatus { UNFURNISHED, SEMI_FURNISHED, FULLY_FURNISHED }
@@ -182,4 +252,16 @@ public class Property {
     public enum ListingStatus {
         DRAFT, PENDING_REVIEW, ACTIVE, EXPIRED, REJECTED, SOLD_RENTED
     }
+
+    public enum ListedBy { OWNER, PROMOTER }
+
+    public enum ApprovalAuthority { DTCP, CMDA, TNHB, CMA, RERA, LOCAL, OTHER, NONE }
+
+    public enum OwnershipType { SINGLE, JOINT, GIFT, INHERITED, COMPANY, TRUST }
+
+    public enum SoilType { RED, BLACK, ALLUVIAL, LATERITE, SANDY, CLAY, LOAM, OTHER }
+
+    public enum WaterSource { BOREWELL, OPEN_WELL, CANAL, RIVER, RAIN_FED, NONE }
+
+    public enum ElectricService { AVAILABLE_3PHASE, AVAILABLE_1PHASE, AGRI_CONNECTION, NONE }
 }

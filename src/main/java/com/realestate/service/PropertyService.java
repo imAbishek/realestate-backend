@@ -23,15 +23,17 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PropertyService {
 
-    private final PropertyRepository      propertyRepository;
-    private final PropertyImageRepository imageRepository;
-    private final LocalityRepository      localityRepository;
-    private final AmenityRepository       amenityRepository;
-    private final UserRepository          userRepository;
-    private final StorageService          imageUploadService;
-    private final EmailService            emailService;
+    private final PropertyRepository         propertyRepository;
+    private final PropertyImageRepository    imageRepository;
+    private final PropertyDocumentRepository documentRepository;
+    private final LocalityRepository         localityRepository;
+    private final AmenityRepository          amenityRepository;
+    private final UserRepository             userRepository;
+    private final StorageService             imageUploadService;
+    private final EmailService               emailService;
 
-    private static final int MAX_IMAGES_PER_PROPERTY = 20;
+    private static final int MAX_IMAGES_PER_PROPERTY    = 20;
+    private static final int MAX_DOCUMENTS_PER_PROPERTY = 8;
 
     // ─────────────────────────────────────────────
     // SEARCH (public)
@@ -54,7 +56,9 @@ public class PropertyService {
     public PropertyDetailResponse getById(UUID id) {
         Property property = findActiveProperty(id);
         propertyRepository.incrementViews(id);
-        return toDetailResponse(property);
+        // Public endpoint — never expose verification document URLs.
+        // Docs contain owner PII (survey numbers, EC details, patta etc.).
+        return toDetailResponse(property, false);
     }
 
     // ─────────────────────────────────────────────
@@ -131,13 +135,35 @@ public class PropertyService {
             .latitude(req.getLatitude())
             .longitude(req.getLongitude())
             .amenities(amenities)
+            .listedBy(req.getListedBy() != null ? req.getListedBy() : Property.ListedBy.OWNER)
+            .plotLengthFt(req.getPlotLengthFt())
+            .plotBreadthFt(req.getPlotBreadthFt())
+            .plotAreaCents(req.getPlotAreaCents())
+            .roadWidthFt(req.getRoadWidthFt())
+            .boundaryWall(req.getBoundaryWall())
+            .cornerPlot(req.getCornerPlot())
+            .approvalAuthority(req.getApprovalAuthority())
+            .ownershipType(req.getOwnershipType())
+            .soilType(req.getSoilType())
+            .waterSource(req.getWaterSource())
+            .hasWell(req.getHasWell())
+            .electricService(req.getElectricService())
+            .cropCurrentlyGrown(req.getCropCurrentlyGrown())
+            .fenced(req.getFenced())
+            .promoterProjectName(req.getPromoterProjectName())
+            .promoterYearsExperience(req.getPromoterYearsExperience() != null
+                ? req.getPromoterYearsExperience().shortValue() : null)
+            .promoterTotalProjects(req.getPromoterTotalProjects() != null
+                ? req.getPromoterTotalProjects().shortValue() : null)
+            .promoterCitiesActive(req.getPromoterCitiesActive())
+            .promoterReraId(req.getPromoterReraId())
             .status(Property.ListingStatus.PENDING_REVIEW)
             .expiresAt(LocalDateTime.now().plusDays(90))   // listing valid for 90 days
             .build();
 
         property = propertyRepository.save(property);
         log.info("Property created: {} by {}", property.getId(), ownerEmail);
-        return toDetailResponse(property);
+        return toDetailResponse(property, true);   // owner gets to see their own docs
     }
 
     // ─────────────────────────────────────────────
@@ -168,14 +194,43 @@ public class PropertyService {
         property.setSecurityDeposit(req.getSecurityDeposit());
         property.setBedrooms(req.getBedrooms() != null ? req.getBedrooms().shortValue() : null);
         property.setBathrooms(req.getBathrooms() != null ? req.getBathrooms().shortValue() : null);
+        property.setBalconies(req.getBalconies() != null ? req.getBalconies().shortValue() : null);
+        property.setTotalFloors(req.getTotalFloors() != null ? req.getTotalFloors().shortValue() : null);
+        property.setFloorNumber(req.getFloorNumber() != null ? req.getFloorNumber().shortValue() : null);
         property.setAreaSqft(req.getAreaSqft());
         property.setCarpetAreaSqft(req.getCarpetAreaSqft());
         property.setFurnishing(req.getFurnishing());
         property.setFacing(req.getFacing());
+        property.setAgeOfProperty(req.getAgeOfProperty() != null ? req.getAgeOfProperty().shortValue() : null);
+        property.setAvailableFrom(req.getAvailableFrom());
         property.setAddressLine(req.getAddressLine());
         property.setLatitude(req.getLatitude());
         property.setLongitude(req.getLongitude());
         property.setParkingAvailable(req.isParkingAvailable());
+
+        // ── Phase B wizard fields ─────────────────
+        if (req.getListedBy() != null) property.setListedBy(req.getListedBy());
+        property.setPlotLengthFt(req.getPlotLengthFt());
+        property.setPlotBreadthFt(req.getPlotBreadthFt());
+        property.setPlotAreaCents(req.getPlotAreaCents());
+        property.setRoadWidthFt(req.getRoadWidthFt());
+        property.setBoundaryWall(req.getBoundaryWall());
+        property.setCornerPlot(req.getCornerPlot());
+        property.setApprovalAuthority(req.getApprovalAuthority());
+        property.setOwnershipType(req.getOwnershipType());
+        property.setSoilType(req.getSoilType());
+        property.setWaterSource(req.getWaterSource());
+        property.setHasWell(req.getHasWell());
+        property.setElectricService(req.getElectricService());
+        property.setCropCurrentlyGrown(req.getCropCurrentlyGrown());
+        property.setFenced(req.getFenced());
+        property.setPromoterProjectName(req.getPromoterProjectName());
+        property.setPromoterYearsExperience(req.getPromoterYearsExperience() != null
+            ? req.getPromoterYearsExperience().shortValue() : null);
+        property.setPromoterTotalProjects(req.getPromoterTotalProjects() != null
+            ? req.getPromoterTotalProjects().shortValue() : null);
+        property.setPromoterCitiesActive(req.getPromoterCitiesActive());
+        property.setPromoterReraId(req.getPromoterReraId());
 
         if (req.getAmenityIds() != null) {
             property.setAmenities(new HashSet<>(amenityRepository.findByIdIn(req.getAmenityIds())));
@@ -184,7 +239,7 @@ public class PropertyService {
         // Re-submit for review when edited (prevents bypassing moderation)
         property.setStatus(Property.ListingStatus.PENDING_REVIEW);
 
-        return toDetailResponse(propertyRepository.save(property));
+        return toDetailResponse(propertyRepository.save(property), true);  // owner editing — show docs
     }
 
     // ─────────────────────────────────────────────
@@ -201,6 +256,7 @@ public class PropertyService {
         }
 
         imageUploadService.deleteAllPropertyImages(id);
+        imageUploadService.deleteAllPropertyDocuments(id);
         propertyRepository.delete(property);
         log.info("Property deleted: {} by {}", id, requestorEmail);
     }
@@ -268,6 +324,83 @@ public class PropertyService {
     }
 
     // ─────────────────────────────────────────────
+    // DOCUMENT UPLOAD (FMB / EC / Patta / Approval letter)
+    // ─────────────────────────────────────────────
+
+    @Transactional
+    public DocumentResponse uploadDocument(UUID propertyId, MultipartFile file,
+                                           PropertyDocument.DocType docType,
+                                           String label, String ownerEmail) {
+        Property property = propertyRepository.findById(propertyId)
+            .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        if (!property.getOwner().getEmail().equals(ownerEmail)) {
+            throw new UnauthorizedException("You can only upload documents to your own listings");
+        }
+        if (documentRepository.findByPropertyId(propertyId).size() >= MAX_DOCUMENTS_PER_PROPERTY) {
+            throw new BadRequestException(
+                "Maximum " + MAX_DOCUMENTS_PER_PROPERTY + " documents allowed per property"
+            );
+        }
+
+        String url = imageUploadService.uploadPropertyDocument(file, propertyId);
+
+        PropertyDocument doc = PropertyDocument.builder()
+            .property(property)
+            .docType(docType)
+            .url(url)
+            .label(label)
+            .build();
+
+        doc = documentRepository.save(doc);
+        return DocumentResponse.builder()
+            .id(doc.getId())
+            .docType(doc.getDocType().name())
+            .url(doc.getUrl())
+            .label(doc.getLabel())
+            .build();
+    }
+
+    /**
+     * Admin-only: generate a short-lived signed download URL for a property document.
+     * Used by the admin verification UI so doc URLs aren't exposed directly to the public.
+     */
+    @Transactional(readOnly = true)
+    public DocumentDownloadResponse getDocumentDownloadUrl(UUID propertyId, UUID documentId) {
+        PropertyDocument doc = documentRepository.findById(documentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
+
+        if (!doc.getProperty().getId().equals(propertyId)) {
+            throw new ResourceNotFoundException("Document", documentId);
+        }
+
+        String signedUrl = imageUploadService.presignDownloadUrl(doc.getUrl());
+        int    ttl       = imageUploadService.presignedDownloadTtlSeconds();
+
+        return DocumentDownloadResponse.builder()
+            .url(signedUrl)
+            .expiresIn(ttl)
+            .docType(doc.getDocType().name())
+            .build();
+    }
+
+    @Transactional
+    public void deleteDocument(UUID propertyId, UUID documentId, String ownerEmail) {
+        Property property = propertyRepository.findById(propertyId)
+            .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        if (!property.getOwner().getEmail().equals(ownerEmail)) {
+            throw new UnauthorizedException("You can only delete documents from your own listings");
+        }
+
+        PropertyDocument doc = documentRepository.findById(documentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
+
+        imageUploadService.deleteDocument(doc.getUrl());
+        documentRepository.delete(doc);
+    }
+
+    // ─────────────────────────────────────────────
     // OWNER: MY LISTINGS
     // ─────────────────────────────────────────────
 
@@ -321,7 +454,7 @@ public class PropertyService {
 
         property = propertyRepository.save(property);
         log.info("Property {} status updated to {} by admin", id, req.getStatus());
-        return toDetailResponse(property);
+        return toDetailResponse(property, true);   // admin action — show docs
     }
 
     @Transactional
@@ -329,7 +462,7 @@ public class PropertyService {
         Property property = propertyRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Property", id));
         property.setFeatured(!property.isFeatured());
-        return toDetailResponse(propertyRepository.save(property));
+        return toDetailResponse(propertyRepository.save(property), true);   // admin action — show docs
     }
 
     // ─────────────────────────────────────────────
@@ -356,6 +489,8 @@ public class PropertyService {
             .furnishing(p.getFurnishing().name())
             .localityName(p.getLocality().getName())
             .cityName(p.getLocality().getCity().getName())
+            .latitude(p.getLatitude())
+            .longitude(p.getLongitude())
             .status(p.getStatus().name())
             .isFeatured(p.isFeatured())
             .isVerified(p.isVerified())
@@ -365,7 +500,7 @@ public class PropertyService {
             .build();
     }
 
-    private PropertyDetailResponse toDetailResponse(Property p) {
+    private PropertyDetailResponse toDetailResponse(Property p, boolean includeDocuments) {
         List<ImageResponse> images = p.getImages().stream()
             .map(img -> ImageResponse.builder()
                 .id(img.getId())
@@ -374,6 +509,19 @@ public class PropertyService {
                 .sortOrder(img.getSortOrder())
                 .build())
             .toList();
+
+        // Verification documents are PII-sensitive (survey numbers, EC entries, patta records).
+        // Only the property owner and admin should ever see them — never the public detail endpoint.
+        List<DocumentResponse> documents = includeDocuments
+            ? documentRepository.findByPropertyId(p.getId()).stream()
+                .map(d -> DocumentResponse.builder()
+                    .id(d.getId())
+                    .docType(d.getDocType().name())
+                    .url(d.getUrl())
+                    .label(d.getLabel())
+                    .build())
+                .toList()
+            : java.util.Collections.emptyList();
 
         List<AmenityResponse> amenities = p.getAmenities().stream()
             .map(a -> AmenityResponse.builder()
@@ -432,6 +580,27 @@ public class PropertyService {
             .owner(ownerInfo)
             .createdAt(p.getCreatedAt())
             .expiresAt(p.getExpiresAt())
+            .listedBy(p.getListedBy() != null ? p.getListedBy().name() : null)
+            .plotLengthFt(p.getPlotLengthFt())
+            .plotBreadthFt(p.getPlotBreadthFt())
+            .plotAreaCents(p.getPlotAreaCents())
+            .roadWidthFt(p.getRoadWidthFt())
+            .boundaryWall(p.getBoundaryWall())
+            .cornerPlot(p.getCornerPlot())
+            .approvalAuthority(p.getApprovalAuthority() != null ? p.getApprovalAuthority().name() : null)
+            .ownershipType(p.getOwnershipType() != null ? p.getOwnershipType().name() : null)
+            .soilType(p.getSoilType() != null ? p.getSoilType().name() : null)
+            .waterSource(p.getWaterSource() != null ? p.getWaterSource().name() : null)
+            .hasWell(p.getHasWell())
+            .electricService(p.getElectricService() != null ? p.getElectricService().name() : null)
+            .cropCurrentlyGrown(p.getCropCurrentlyGrown())
+            .fenced(p.getFenced())
+            .promoterProjectName(p.getPromoterProjectName())
+            .promoterYearsExperience(p.getPromoterYearsExperience() != null ? (int) p.getPromoterYearsExperience() : null)
+            .promoterTotalProjects(p.getPromoterTotalProjects() != null ? (int) p.getPromoterTotalProjects() : null)
+            .promoterCitiesActive(p.getPromoterCitiesActive())
+            .promoterReraId(p.getPromoterReraId())
+            .documents(documents)
             .build();
     }
 
@@ -440,7 +609,7 @@ public class PropertyService {
     public PropertyDetailResponse getByIdForAdmin(UUID id) {
         Property property = propertyRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Property", id));
-        return toDetailResponse(property);
+        return toDetailResponse(property, true);   // admin needs the docs to verify
     }
 
     @Transactional(readOnly = true)
@@ -450,7 +619,7 @@ public class PropertyService {
         if (!property.getOwner().getEmail().equals(email)) {
             throw new UnauthorizedException("You don't have permission to view this listing");
         }
-        return toDetailResponse(property);
+        return toDetailResponse(property, true);   // owner sees their own docs
     }
 
     /** Validates a property is active without incrementing view count. */

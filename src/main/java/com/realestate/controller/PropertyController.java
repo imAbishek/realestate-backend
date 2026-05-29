@@ -2,6 +2,7 @@ package com.realestate.controller;
 
 import com.realestate.dto.property.PropertyDtos.*;
 import com.realestate.dto.property.PropertySearchRequest;
+import com.realestate.entity.PropertyDocument;
 import com.realestate.service.PropertyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -175,6 +176,36 @@ public class PropertyController {
             @AuthenticationPrincipal UserDetails currentUser) {
 
         propertyService.deleteImage(id, imageId, currentUser.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Documents (FMB / EC / Patta / Approval letter) ────────
+
+    @PostMapping("/{id}/documents")
+    @Operation(summary = "Upload a verification document (PDF or image) for a property",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<DocumentResponse> uploadDocument(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("docType") PropertyDocument.DocType docType,
+            @RequestParam(value = "label", required = false) String label,
+            @AuthenticationPrincipal UserDetails currentUser) {
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+            propertyService.uploadDocument(id, file, docType, label, currentUser.getUsername())
+        );
+    }
+
+    @DeleteMapping("/{id}/documents/{documentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete a property document",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Void> deleteDocument(
+            @PathVariable UUID id,
+            @PathVariable UUID documentId,
+            @AuthenticationPrincipal UserDetails currentUser) {
+
+        propertyService.deleteDocument(id, documentId, currentUser.getUsername());
         return ResponseEntity.noContent().build();
     }
 

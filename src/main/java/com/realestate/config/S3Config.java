@@ -9,6 +9,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import java.net.URI;
 
@@ -45,6 +46,30 @@ public class S3Config {
                        .build());
         }
 
+        return builder.build();
+    }
+
+    /**
+     * Presigner — used to generate short-lived signed GET URLs for
+     * private documents (FMB sketches, ECs, etc.) without exposing
+     * the raw object URL to clients.
+     */
+    @Bean
+    public S3Presigner s3Presigner() {
+        AppProperties.Aws aws = appProperties.getAws();
+
+        var builder = S3Presigner.builder()
+            .region(Region.of(aws.getRegion()))
+            .credentialsProvider(StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(aws.getAccessKey(), aws.getSecretKey())
+            ));
+
+        if (aws.getEndpoint() != null && !aws.getEndpoint().isBlank()) {
+            builder.endpointOverride(URI.create(aws.getEndpoint()))
+                   .serviceConfiguration(S3Configuration.builder()
+                       .pathStyleAccessEnabled(true)
+                       .build());
+        }
         return builder.build();
     }
 }

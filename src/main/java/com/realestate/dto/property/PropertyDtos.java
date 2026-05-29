@@ -72,6 +72,34 @@ public class PropertyDtos {
 
         // IDs of amenities from the amenities master table
         private List<UUID> amenityIds;
+
+        // ── Phase B wizard extensions ─────────────
+        private Property.ListedBy listedBy;
+
+        // Plot / land
+        private BigDecimal plotLengthFt;
+        private BigDecimal plotBreadthFt;
+        private BigDecimal plotAreaCents;
+        private BigDecimal roadWidthFt;
+        private Boolean boundaryWall;
+        private Boolean cornerPlot;
+        private Property.ApprovalAuthority approvalAuthority;
+        private Property.OwnershipType ownershipType;
+
+        // Agri
+        private Property.SoilType soilType;
+        private Property.WaterSource waterSource;
+        private Boolean hasWell;
+        private Property.ElectricService electricService;
+        private String cropCurrentlyGrown;
+        private Boolean fenced;
+
+        // Promoter
+        private String promoterProjectName;
+        private Integer promoterYearsExperience;
+        private Integer promoterTotalProjects;
+        private String promoterCitiesActive;
+        private String promoterReraId;
     }
 
     // ─────────────────────────────────────────────
@@ -95,6 +123,8 @@ public class PropertyDtos {
         private String furnishing;
         private String localityName;
         private String cityName;
+        private BigDecimal latitude;
+        private BigDecimal longitude;
         @JsonProperty("isFeatured")
         private boolean isFeatured;
         @JsonProperty("isVerified")
@@ -158,6 +188,48 @@ public class PropertyDtos {
         private OwnerInfo owner;
         private LocalDateTime createdAt;
         private LocalDateTime expiresAt;
+
+        // ── Phase B wizard extensions ─────────────
+        private String listedBy;
+
+        private BigDecimal plotLengthFt;
+        private BigDecimal plotBreadthFt;
+        private BigDecimal plotAreaCents;
+        private BigDecimal roadWidthFt;
+        private Boolean boundaryWall;
+        private Boolean cornerPlot;
+        private String approvalAuthority;
+        private String ownershipType;
+
+        private String soilType;
+        private String waterSource;
+        private Boolean hasWell;
+        private String electricService;
+        private String cropCurrentlyGrown;
+        private Boolean fenced;
+
+        private String promoterProjectName;
+        private Integer promoterYearsExperience;
+        private Integer promoterTotalProjects;
+        private String promoterCitiesActive;
+        private String promoterReraId;
+
+        private List<DocumentResponse> documents;
+    }
+
+    @Data @Builder
+    public static class DocumentResponse {
+        private UUID id;
+        private String docType;
+        private String url;
+        private String label;
+    }
+
+    @Data @Builder
+    public static class DocumentDownloadResponse {
+        private String url;
+        private int    expiresIn;   // seconds the signed URL stays valid
+        private String docType;
     }
 
     // ─────────────────────────────────────────────

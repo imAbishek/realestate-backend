@@ -78,6 +78,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/properties/**").permitAll()
                 // Inquiries are public — allow guest submissions
                 .requestMatchers(HttpMethod.POST, "/properties/*/inquiries").permitAll()
+                // Site-visit bookings — guests may also book without an account
+                .requestMatchers(HttpMethod.POST, "/properties/*/site-visits").permitAll()
                 .requestMatchers(HttpMethod.GET, "/search/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/cities/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/localities/**").permitAll()

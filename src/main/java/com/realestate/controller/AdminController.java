@@ -74,6 +74,14 @@ public class AdminController {
         return ResponseEntity.ok(propertyService.getByIdForAdmin(id));
     }
 
+    @GetMapping("/listings/{id}/documents/{documentId}/download")
+    @Operation(summary = "Get a short-lived signed download URL for a property document")
+    public ResponseEntity<DocumentDownloadResponse> getDocumentDownloadUrl(
+            @PathVariable UUID id,
+            @PathVariable UUID documentId) {
+        return ResponseEntity.ok(propertyService.getDocumentDownloadUrl(id, documentId));
+    }
+
     @PutMapping("/listings/{id}/approve")
     @Operation(summary = "Approve a pending listing (sets status to ACTIVE)")
     public ResponseEntity<PropertyDetailResponse> approve(@PathVariable UUID id) {

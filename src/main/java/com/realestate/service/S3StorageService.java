@@ -10,11 +10,15 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -32,17 +36,26 @@ import java.util.stream.Collectors;
 @Slf4j
 public class S3StorageService implements StorageService {
 
-    private static final long         MAX_FILE_SIZE = 10 * 1024 * 1024L;
-    private static final List<String> ALLOWED_TYPES = List.of(
+    private static final long         MAX_FILE_SIZE   = 10 * 1024 * 1024L;
+    private static final long         MAX_DOC_SIZE    = 15 * 1024 * 1024L;
+    private static final List<String> ALLOWED_TYPES   = List.of(
+        "image/jpeg", "image/jpg", "image/png", "image/webp"
+    );
+    private static final List<String> ALLOWED_DOC_TYPES = List.of(
+        "application/pdf",
         "image/jpeg", "image/jpg", "image/png", "image/webp"
     );
 
-    private final S3Client s3Client;
-    private final String   bucket;
-    private final String   imageBaseUrl;   // root of public image URLs
+    private static final int PRESIGNED_DOWNLOAD_TTL_SECONDS = 300; // 5 minutes
 
-    public S3StorageService(S3Client s3Client, AppProperties appProperties) {
-        this.s3Client = s3Client;
+    private final S3Client    s3Client;
+    private final S3Presigner s3Presigner;
+    private final String      bucket;
+    private final String      imageBaseUrl;   // root of public image URLs
+
+    public S3StorageService(S3Client s3Client, S3Presigner s3Presigner, AppProperties appProperties) {
+        this.s3Client    = s3Client;
+        this.s3Presigner = s3Presigner;
         AppProperties.Aws aws = appProperties.getAws();
         this.bucket = aws.getS3().getBucketName();
 
@@ -146,8 +159,108 @@ public class S3StorageService implements StorageService {
             case "image/jpeg", "image/jpg" -> "jpg";
             case "image/png"               -> "png";
             case "image/webp"              -> "webp";
+            case "application/pdf"         -> "pdf";
             default                        -> "jpg";
         };
+    }
+
+    // ─────────────────────────────────────────────
+    // Documents (PDF or image)
+    // ─────────────────────────────────────────────
+
+    @Override
+    public String uploadPropertyDocument(MultipartFile file, UUID propertyId) {
+        validateDocument(file);
+
+        String ext = getExtension(file.getContentType());
+        String key = "documents/%s/%s.%s".formatted(propertyId, UUID.randomUUID(), ext);
+
+        try {
+            PutObjectRequest putReq = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(file.getContentType())
+                .contentLength(file.getSize())
+                .build();
+
+            s3Client.putObject(putReq, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+            String url = imageBaseUrl + "/" + key;
+            log.info("Document uploaded: {}", url);
+            return url;
+        } catch (IOException e) {
+            log.error("S3 document upload failed for property {}: {}", propertyId, e.getMessage());
+            throw new RuntimeException("Document upload failed. Please try again.", e);
+        }
+    }
+
+    @Override
+    public void deleteDocument(String docUrl) {
+        // Same S3 URL pattern as images — reuse extractor.
+        deleteImage(docUrl);
+    }
+
+    @Override
+    public void deleteAllPropertyDocuments(UUID propertyId) {
+        String prefix = "documents/%s/".formatted(propertyId);
+        try {
+            var listReq = ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build();
+            var objects = s3Client.listObjectsV2(listReq).contents();
+            if (objects.isEmpty()) return;
+
+            List<ObjectIdentifier> toDelete = objects.stream()
+                .map(o -> ObjectIdentifier.builder().key(o.key()).build())
+                .collect(Collectors.toList());
+
+            s3Client.deleteObjects(DeleteObjectsRequest.builder()
+                .bucket(bucket)
+                .delete(d -> d.objects(toDelete))
+                .build());
+
+            log.info("Deleted {} S3 documents for property {}", toDelete.size(), propertyId);
+        } catch (Exception e) {
+            log.warn("Could not delete S3 documents for property {}: {}", propertyId, e.getMessage());
+        }
+    }
+
+    @Override
+    public String presignDownloadUrl(String storedUrl) {
+        String key = extractKeyFromUrl(storedUrl);
+        if (key == null) {
+            // Fall back to the stored URL — caller still gets *something* clickable.
+            log.warn("Could not extract S3 key from URL, returning raw URL: {}", storedUrl);
+            return storedUrl;
+        }
+        try {
+            GetObjectRequest getReq = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build();
+
+            GetObjectPresignRequest presignReq = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofSeconds(PRESIGNED_DOWNLOAD_TTL_SECONDS))
+                .getObjectRequest(getReq)
+                .build();
+
+            return s3Presigner.presignGetObject(presignReq).url().toString();
+        } catch (Exception e) {
+            log.error("Failed to presign GET for key {}: {}", key, e.getMessage());
+            return storedUrl;
+        }
+    }
+
+    @Override
+    public int presignedDownloadTtlSeconds() {
+        return PRESIGNED_DOWNLOAD_TTL_SECONDS;
+    }
+
+    private void validateDocument(MultipartFile file) {
+        if (file == null || file.isEmpty())
+            throw new BadRequestException("No file provided");
+        if (file.getSize() > MAX_DOC_SIZE)
+            throw new BadRequestException("File size exceeds 15 MB limit");
+        if (!ALLOWED_DOC_TYPES.contains(file.getContentType()))
+            throw new BadRequestException("Invalid document type. Only PDF, JPEG, PNG and WebP are allowed.");
     }
 
     /**
