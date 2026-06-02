@@ -22,28 +22,7 @@ There is **no Maven wrapper** (`mvnw`) in this repo — you must use a system-in
 
 ---
 
-## Step 2 — Create your `.env`
-
-```bash
-# Linux / macOS
-cp .env.example .env
-
-# Windows PowerShell
-Copy-Item .env.example .env
-```
-
-The defaults in `.env.example` work out of the box for local dev (they point at the Docker
-Postgres/Redis/MinIO below). Things you may want to change:
-
-- `JWT_SECRET` — fine to leave for local; generate a real one for prod with `openssl rand -base64 64`.
-- `MAIL_*` — left as Mailtrap placeholders. OTP/inquiry emails won't actually send until you
-  fill these in, but the app still runs (it just logs the send attempt).
-
-> `.env` is gitignored — never commit it.
-
----
-
-## Step 3 — Start the Docker services (postgres + redis + minio)
+## Step 2 — Start the Docker services (postgres + redis + minio)
 
 ```bash
 docker compose up -d
@@ -68,7 +47,7 @@ This brings up:
 
 ---
 
-## Step 4 — Run the API
+## Step 3 — Run the API
 
 ```bash
 mvn spring-boot:run
@@ -91,7 +70,7 @@ Then open **Swagger** to explore/test endpoints: http://localhost:8080/api/swagg
 
 ---
 
-## Step 5 — Validate after any change
+## Step 4 — Validate after any change
 
 ```bash
 mvn compile        # must show BUILD SUCCESS
