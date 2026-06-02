@@ -26,7 +26,11 @@ VALUES (
     TRUE,
     TRUE
 )
-ON CONFLICT (email) DO NOTHING;
+-- No conflict target: the demo seller may already exist by email OR by phone
+-- (Neon prod already had a user on 9876543210). A bare DO NOTHING tolerates a
+-- collision on either unique constraint, so this migration stays idempotent
+-- and never aborts app startup.
+ON CONFLICT DO NOTHING;
 
 -- ── 2. Properties ───────────────────────────────────────────
 -- Each row joins on the demo seller + the city/locality slugs.
@@ -34,7 +38,9 @@ ON CONFLICT (email) DO NOTHING;
 -- create duplicates.
 
 WITH seller AS (
-    SELECT id FROM users WHERE email = 'demo.seller@propfind.in'
+    -- Resolve by phone: this migration pins 9876543210 as the demo seller, and
+    -- that is the row that already exists in prod (its email may differ).
+    SELECT id FROM users WHERE phone = '9876543210' LIMIT 1
 ),
 loc AS (
     SELECT l.id, l.slug
@@ -224,7 +230,7 @@ WHERE NOT EXISTS (
 INSERT INTO property_amenities (property_id, amenity_id)
 SELECT pr.id, a.id
 FROM properties pr
-JOIN users u ON u.id = pr.owner_id AND u.email = 'demo.seller@propfind.in'
+JOIN users u ON u.id = pr.owner_id AND u.phone = '9876543210'
 JOIN amenities a ON a.name IN (
     'Car Parking', 'Power Backup', 'CCTV Surveillance', 'Lift / Elevator', 'Security Guard'
 )
