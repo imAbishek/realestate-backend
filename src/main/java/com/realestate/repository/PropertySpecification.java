@@ -99,11 +99,13 @@ public class PropertySpecification {
                 Predicate descMatch = cb.like(
                     cb.lower(root.get("description")), pattern
                 );
-                // Also match city name so typing "Coimbatore" in search finds city properties
+                // Also match locality + city names so typing "Saibaba Colony" or
+                // "Coimbatore" in search finds those properties
                 Join<Object, Object> kwLocality = root.join("locality", JoinType.LEFT);
                 Join<Object, Object> kwCity = kwLocality.join("city", JoinType.LEFT);
+                Predicate localityNameMatch = cb.like(cb.lower(kwLocality.get("name")), pattern);
                 Predicate cityNameMatch = cb.like(cb.lower(kwCity.get("name")), pattern);
-                predicates.add(cb.or(titleMatch, descMatch, cityNameMatch));
+                predicates.add(cb.or(titleMatch, descMatch, localityNameMatch, cityNameMatch));
             }
 
             // Avoid N+1 on images fetch for listing cards
