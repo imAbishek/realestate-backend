@@ -133,13 +133,29 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Prefers X-Forwarded-For (set by Railway / Render / Cloudflare reverse proxies)
-     * over the raw socket address.
+     * Resolves the client IP used as the rate-limit key.
+     *
+     * SECURITY: X-Forwarded-For is a comma-separated trust chain "client, proxy1, proxy2"
+     * where each proxy APPENDS the address it saw. A malicious client can forge entries on
+     * the LEFT (e.g. send "X-Forwarded-For: 1.2.3.4"); our trusted reverse proxy (Render /
+     * Cloudflare) then appends the real socket IP on the RIGHT. Taking the leftmost entry
+     * therefore trusts attacker-controlled input and lets a client rotate a fake value per
+     * request to defeat every limit in this filter.
+     *
+     * We instead take the RIGHTMOST entry — the address our own trusted proxy observed and
+     * appended, which the client cannot forge. This assumes exactly one trusted hop in front
+     * of the app (true for Render today). If a second trusted hop is added (e.g. Cloudflare
+     * in front of Render), switch to a platform header the edge sets and clients can't reach
+     * through it (Cloudflare: CF-Connecting-IP), or skip the rightmost N trusted hops.
      */
     private String resolveClientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+            String[] hops = forwarded.split(",");
+            String rightmost = hops[hops.length - 1].trim();
+            if (!rightmost.isBlank()) {
+                return rightmost;
+            }
         }
         return request.getRemoteAddr();
     }

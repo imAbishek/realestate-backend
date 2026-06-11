@@ -39,8 +39,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("UPDATE User u SET u.lastLoginAt = :time WHERE u.id = :id")
     void updateLastLogin(UUID id, LocalDateTime time);
 
-    // Clear OTP after verification
+    // Clear OTP after verification (also resets the failed-attempt counter)
     @Modifying
-    @Query("UPDATE User u SET u.otpCode = null, u.otpExpiresAt = null WHERE u.id = :id")
+    @Query("UPDATE User u SET u.otpCode = null, u.otpExpiresAt = null, u.otpAttempts = 0 WHERE u.id = :id")
     void clearOtp(UUID id);
 }

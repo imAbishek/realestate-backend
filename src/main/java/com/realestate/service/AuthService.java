@@ -18,6 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
@@ -130,6 +132,13 @@ public class AuthService {
             throw new UnauthorizedException("Refresh token is invalid or expired. Please log in again.");
         }
 
+        // Only a token explicitly minted as a refresh token may mint a new pair.
+        // Otherwise any stolen access token could renew itself indefinitely,
+        // making its short expiry meaningless.
+        if (!jwtUtil.isRefreshToken(token)) {
+            throw new UnauthorizedException("Not a refresh token. Please log in again.");
+        }
+
         String email = jwtUtil.extractEmail(token);
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new UnauthorizedException("User not found"));
@@ -147,14 +156,12 @@ public class AuthService {
 
     @Transactional
     public MessageResponse verifyOtp(VerifyOtpRequest req) {
-        User user = userRepository.findByEmailAndOtpCode(req.getEmail().toLowerCase().trim(), req.getOtp())
+        User user = userRepository.findByEmail(req.getEmail().toLowerCase().trim())
             .orElseThrow(() -> new BadRequestException("Invalid or expired OTP"));
 
-        if (user.getOtpExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("OTP has expired. Please request a new one.");
-        }
+        checkOtp(user, req.getOtp());
 
-        // Mark verified and clear OTP
+        // Mark verified and clear OTP (also resets the attempt counter)
         user.setVerified(true);
         userRepository.save(user);
         userRepository.clearOtp(user.getId());
@@ -188,12 +195,10 @@ public class AuthService {
 
     @Transactional
     public MessageResponse resetPassword(ResetPasswordRequest req) {
-        User user = userRepository.findByEmailAndOtpCode(req.getEmail().toLowerCase().trim(), req.getOtp())
+        User user = userRepository.findByEmail(req.getEmail().toLowerCase().trim())
             .orElseThrow(() -> new BadRequestException("Invalid or expired OTP"));
 
-        if (user.getOtpExpiresAt() == null || user.getOtpExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("OTP has expired. Please request a new one.");
-        }
+        checkOtp(user, req.getOtp());
 
         user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
         userRepository.save(user);
@@ -230,6 +235,40 @@ public class AuthService {
             .build();
     }
 
+    /** Max wrong OTP guesses before the OTP is burned and a new one is required. */
+    private static final int MAX_OTP_ATTEMPTS = 5;
+
+    /**
+     * Validates a submitted OTP against the stored one with brute-force protection.
+     * Throws on: no OTP set, expired OTP, too many failed attempts, or a wrong code.
+     * A wrong code increments the per-account counter; exceeding the cap clears the OTP
+     * so the attacker must trigger a brand-new one (re-hitting the rate-limited endpoint).
+     * Returns normally only when the OTP matches.
+     */
+    private void checkOtp(User user, String providedOtp) {
+        if (user.getOtpCode() == null || user.getOtpExpiresAt() == null) {
+            throw new BadRequestException("Invalid or expired OTP");
+        }
+        if (user.getOtpExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("OTP has expired. Please request a new one.");
+        }
+        if (user.getOtpAttempts() >= MAX_OTP_ATTEMPTS) {
+            userRepository.clearOtp(user.getId());
+            throw new BadRequestException("Too many incorrect attempts. Please request a new OTP.");
+        }
+
+        boolean matches = MessageDigest.isEqual(
+            user.getOtpCode().getBytes(StandardCharsets.UTF_8),
+            providedOtp == null ? new byte[0] : providedOtp.getBytes(StandardCharsets.UTF_8)
+        );
+
+        if (!matches) {
+            user.setOtpAttempts(user.getOtpAttempts() + 1);
+            userRepository.save(user);
+            throw new BadRequestException("Invalid or expired OTP");
+        }
+    }
+
     private String generateOtp() {
         // Cryptographically secure 6-digit OTP
         SecureRandom random = new SecureRandom();
@@ -240,6 +279,7 @@ public class AuthService {
     private void saveOtp(User user, String otp) {
         user.setOtpCode(otp);
         user.setOtpExpiresAt(LocalDateTime.now().plusMinutes(15));  // OTP valid for 15 minutes
+        user.setOtpAttempts(0);   // fresh OTP — reset the failed-guess counter
         userRepository.save(user);
     }
 }

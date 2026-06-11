@@ -319,6 +319,13 @@ public class PropertyService {
         PropertyImage image = imageRepository.findById(imageId)
             .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
 
+        // Guard against IDOR: the image must belong to the property in the path,
+        // otherwise an owner of one listing could delete another listing's image
+        // by pairing their propertyId with someone else's imageId.
+        if (!image.getProperty().getId().equals(propertyId)) {
+            throw new ResourceNotFoundException("Image", imageId);
+        }
+
         imageUploadService.deleteImage(image.getUrl());
         imageRepository.delete(image);
     }
@@ -395,6 +402,12 @@ public class PropertyService {
 
         PropertyDocument doc = documentRepository.findById(documentId)
             .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
+
+        // Guard against IDOR: the document must belong to the property in the path
+        // (same flaw class as deleteImage — see getDocumentDownloadUrl for the pattern).
+        if (!doc.getProperty().getId().equals(propertyId)) {
+            throw new ResourceNotFoundException("Document", documentId);
+        }
 
         imageUploadService.deleteDocument(doc.getUrl());
         documentRepository.delete(doc);

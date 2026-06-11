@@ -127,6 +127,9 @@ public class ImageUploadService implements StorageService {
             throw new BadRequestException("File size exceeds 10 MB limit");
         if (!ALLOWED_TYPES.contains(file.getContentType()))
             throw new BadRequestException("Invalid file type. Only JPEG, PNG and WebP are allowed.");
+        // Defense-in-depth: the declared content-type is client-controlled, so also
+        // confirm the actual bytes are a real image.
+        FileContentValidator.validateImage(file);
     }
 
     /**
@@ -210,5 +213,6 @@ public class ImageUploadService implements StorageService {
             throw new BadRequestException("File size exceeds 15 MB limit");
         if (!ALLOWED_DOC_TYPES.contains(file.getContentType()))
             throw new BadRequestException("Invalid document type. Only PDF, JPEG, PNG and WebP are allowed.");
+        FileContentValidator.validateDocument(file);
     }
 }

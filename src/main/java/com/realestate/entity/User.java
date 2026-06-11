@@ -61,6 +61,11 @@ public class User {
     @Column(name = "otp_expires_at")
     private LocalDateTime otpExpiresAt;
 
+    // Failed OTP guesses since the current OTP was issued — caps brute-force.
+    @Column(name = "otp_attempts", nullable = false)
+    @Builder.Default
+    private int otpAttempts = 0;
+
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 

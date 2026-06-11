@@ -46,7 +46,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String token = extractToken(request);
 
-        if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
+        // A refresh token is long-lived and must NOT be accepted as an access token —
+        // it is only valid at /auth/refresh-token. Reject it here so a stolen refresh
+        // token can't be used to call the API directly.
+        if (StringUtils.hasText(token) && jwtUtil.validateToken(token) && !jwtUtil.isRefreshToken(token)) {
             String email = jwtUtil.extractEmail(token);
 
             // Only authenticate if not already authenticated in this request

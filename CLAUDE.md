@@ -114,8 +114,17 @@ Registration always sets `role = BUYER` — no role field in `RegisterRequest`.
 - Exception classes are separate files (not nested)
 - Add @PreAuthorize("hasRole('ADMIN')") on admin controller methods
 
+## Testing — MANDATORY from 2026-06-10
+Tests are no longer optional. **Every change ships with tests** and `mvn test` must pass before any task is called done. This is enforced by CI (`.github/workflows/ci.yml`) on every push/PR to `main`.
+
+- **Test stack:** JUnit 5 + Mockito + AssertJ (`spring-boot-starter-test`), `spring-security-test`. Spring's `MockMultipartFile` (in `spring-test`) for upload tests.
+- **Location/naming:** mirror the main package under `src/test/java/...`; name `<ClassUnderTest>Test` (or a focused suffix like `...IdorTest`, `...GuardTest`).
+- **Default style:** fast Mockito unit tests — `@ExtendWith(MockitoExtension.class)` + `@Mock`/`@InjectMocks`. Reserve `@SpringBootTest` for true wiring/integration needs (it needs a DB).
+- **What every new/changed unit needs:** the happy path + the guard/error paths (auth/ownership/IDOR, validation, limits, enum/branch edges). Security-relevant branches are not optional.
+- **Existing suites to follow as templates:** `AuthServiceTest`, `JwtUtilTest`, `PropertyServiceIdorTest`/`PropertyServiceGuardTest`, `SiteVisitServiceTest`, `FavoriteServiceTest`, `FileContentValidatorTest`, `RateLimitFilterIpTest`.
+
 ## Validation command
 ```bash
-mvn compile
+mvn test     # compiles AND runs the suite — must show BUILD SUCCESS
 ```
-Must show BUILD SUCCESS. Fix all errors before saying done.
+`mvn compile` alone is no longer sufficient. Fix all failures before saying done.

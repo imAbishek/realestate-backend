@@ -46,11 +46,15 @@ public class JwtUtil {
      *   role  = BUYER / SELLER / AGENT / ADMIN
      *   uid   = user UUID (so controllers can load the user without a DB hit)
      */
+    public static final String TYPE_ACCESS  = "access";
+    public static final String TYPE_REFRESH = "refresh";
+
     public String generateAccessToken(User user) {
         return buildToken(
             user,
             appProperties.getJwt().getAccessTokenExpiryMs(),
             Map.of(
+                "type", TYPE_ACCESS,
                 "role", user.getRole().name(),
                 "uid",  user.getId().toString(),
                 "name", user.getName()
@@ -66,7 +70,7 @@ public class JwtUtil {
         return buildToken(
             user,
             appProperties.getJwt().getRefreshTokenExpiryMs(),
-            Map.of("type", "refresh")
+            Map.of("type", TYPE_REFRESH)
         );
     }
 
@@ -115,6 +119,19 @@ public class JwtUtil {
 
     public String extractRole(String token) {
         return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
+    /**
+     * Reads the "type" claim — {@link #TYPE_ACCESS} or {@link #TYPE_REFRESH}.
+     * Returns null for legacy tokens issued before the claim existed.
+     */
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get("type", String.class));
+    }
+
+    /** True only for tokens explicitly minted as refresh tokens. */
+    public boolean isRefreshToken(String token) {
+        return TYPE_REFRESH.equals(extractTokenType(token));
     }
 
     public String extractUserId(String token) {

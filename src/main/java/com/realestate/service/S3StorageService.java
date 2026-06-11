@@ -151,6 +151,9 @@ public class S3StorageService implements StorageService {
             throw new BadRequestException("File size exceeds 10 MB limit");
         if (!ALLOWED_TYPES.contains(file.getContentType()))
             throw new BadRequestException("Invalid file type. Only JPEG, PNG and WebP are allowed.");
+        // Defense-in-depth: confirm the actual bytes are a real image, not just the
+        // client-declared content-type.
+        FileContentValidator.validateImage(file);
     }
 
     private String getExtension(String contentType) {
@@ -261,6 +264,7 @@ public class S3StorageService implements StorageService {
             throw new BadRequestException("File size exceeds 15 MB limit");
         if (!ALLOWED_DOC_TYPES.contains(file.getContentType()))
             throw new BadRequestException("Invalid document type. Only PDF, JPEG, PNG and WebP are allowed.");
+        FileContentValidator.validateDocument(file);
     }
 
     /**
