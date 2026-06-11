@@ -1,6 +1,7 @@
 package com.realestate.controller;
 
 import com.realestate.dto.booking.BookingDtos.*;
+import com.realestate.exception.UnauthorizedException;
 import com.realestate.service.SiteVisitService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,6 +37,12 @@ public class SiteVisitController {
 
     private final SiteVisitService bookingService;
 
+    /** Defensive 401 instead of an NPE if the security config ever stops guarding these routes (#46). */
+    private static String requireUser(UserDetails currentUser) {
+        if (currentUser == null) throw new UnauthorizedException("Sign in to manage site visits");
+        return currentUser.getUsername();
+    }
+
     // ── Public (guest-friendly) booking ───────────────────────
 
     @PostMapping("/properties/{propertyId}/site-visits")
@@ -59,7 +66,7 @@ public class SiteVisitController {
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails currentUser) {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        return ResponseEntity.ok(bookingService.listMine(currentUser.getUsername(), pageable));
+        return ResponseEntity.ok(bookingService.listMine(requireUser(currentUser), pageable));
     }
 
     @GetMapping("/site-visits/incoming")
@@ -70,7 +77,7 @@ public class SiteVisitController {
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails currentUser) {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        return ResponseEntity.ok(bookingService.listOnMyListings(currentUser.getUsername(), pageable));
+        return ResponseEntity.ok(bookingService.listOnMyListings(requireUser(currentUser), pageable));
     }
 
     @PatchMapping("/site-visits/{id}/cancel")
@@ -80,6 +87,6 @@ public class SiteVisitController {
             @PathVariable UUID id,
             @RequestBody(required = false) CancelBookingRequest req,
             @AuthenticationPrincipal UserDetails currentUser) {
-        return ResponseEntity.ok(bookingService.cancel(id, req, currentUser.getUsername()));
+        return ResponseEntity.ok(bookingService.cancel(id, req, requireUser(currentUser)));
     }
 }

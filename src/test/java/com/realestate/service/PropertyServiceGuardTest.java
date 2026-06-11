@@ -52,7 +52,8 @@ class PropertyServiceGuardTest {
     @Test
     void uploadImage_atMaxCapacity_throwsBadRequest() {
         UUID id = UUID.randomUUID();
-        when(propertyRepository.findById(id))
+        // uploadImage takes the FOR UPDATE lock (#43), not the plain findById
+        when(propertyRepository.findByIdForUpdate(id))
             .thenReturn(Optional.of(ownedBy(id, "owner@x.in", Property.ListingStatus.ACTIVE)));
         when(imageRepository.countByPropertyId(id)).thenReturn(20L); // MAX_IMAGES_PER_PROPERTY
 

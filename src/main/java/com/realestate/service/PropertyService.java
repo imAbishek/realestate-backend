@@ -268,7 +268,9 @@ public class PropertyService {
     @Transactional
     public ImageResponse uploadImage(UUID propertyId, MultipartFile file,
                                      boolean setPrimary, String ownerEmail) {
-        Property property = propertyRepository.findById(propertyId)
+        // Row lock so two concurrent uploads can't both pass the cap check
+        // or compute the same sortOrder (#43)
+        Property property = propertyRepository.findByIdForUpdate(propertyId)
             .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
 
         if (!property.getOwner().getEmail().equals(ownerEmail)) {
@@ -338,7 +340,8 @@ public class PropertyService {
     public DocumentResponse uploadDocument(UUID propertyId, MultipartFile file,
                                            PropertyDocument.DocType docType,
                                            String label, String ownerEmail) {
-        Property property = propertyRepository.findById(propertyId)
+        // Row lock — same #43 race as uploadImage, on the 8-document cap
+        Property property = propertyRepository.findByIdForUpdate(propertyId)
             .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
 
         if (!property.getOwner().getEmail().equals(ownerEmail)) {

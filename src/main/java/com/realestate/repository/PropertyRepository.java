@@ -1,6 +1,7 @@
 package com.realestate.repository;
 
 import com.realestate.entity.*;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
@@ -12,6 +13,14 @@ import java.util.*;
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, UUID>,
         JpaSpecificationExecutor<Property> {
+
+    /**
+     * SELECT ... FOR UPDATE — serialises concurrent uploads on the same property so
+     * the image/document caps and sortOrder assignment can't race (#43).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Property p WHERE p.id = :id")
+    Optional<Property> findByIdForUpdate(@Param("id") UUID id);
 
     Page<Property> findByOwnerIdOrderByCreatedAtDesc(UUID ownerId, Pageable pageable);
     Page<Property> findByStatusOrderByCreatedAtAsc(Property.ListingStatus status, Pageable pageable);
