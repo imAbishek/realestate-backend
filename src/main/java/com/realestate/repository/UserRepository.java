@@ -2,6 +2,7 @@ package com.realestate.repository;
 
 import com.realestate.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -13,9 +14,10 @@ import java.util.UUID;
 /**
  * Spring Data JPA automatically implements all these methods.
  * No SQL needed — method names are the query.
+ * JpaSpecificationExecutor powers the admin role + free-text user search.
  */
 @Repository
-public interface UserRepository extends JpaRepository<User, UUID> {
+public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
 
     // Login + registration lookups
     Optional<User> findByEmail(String email);
@@ -27,9 +29,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     // OTP verification lookup
     Optional<User> findByEmailAndOtpCode(String email, String otpCode);
-
-    // Admin: find all users of a specific role
-    java.util.List<User> findAllByRole(User.Role role);
 
     // Admin analytics: efficient count without loading entities
     long countByRole(User.Role role);

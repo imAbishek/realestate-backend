@@ -441,7 +441,13 @@ public class PropertyService {
     }
 
     @Transactional(readOnly = true)
-    public Page<PropertyCardResponse> getAllListings(Property.ListingStatus status, Pageable pageable) {
+    public Page<PropertyCardResponse> getAllListings(Property.ListingStatus status, String q, Pageable pageable) {
+        if (q != null && !q.isBlank()) {
+            return propertyRepository.findAll(PropertySpecification.adminFilter(status, q), pageable)
+                .map(this::toCardResponse);
+        }
+        // No text search → keep the original queries (status path sorts oldest-first
+        // on purpose: it doubles as the review queue).
         if (status != null) {
             return propertyRepository.findByStatusOrderByCreatedAtAsc(status, pageable)
                 .map(this::toCardResponse);

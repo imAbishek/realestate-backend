@@ -52,9 +52,10 @@ public class AdminController {
     }
 
     @GetMapping("/listings/all")
-    @Operation(summary = "Get all listings with optional status filter")
+    @Operation(summary = "Get all listings with optional status filter and text search (title / locality / city)")
     public ResponseEntity<Page<PropertyCardResponse>> getAllListings(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -65,7 +66,7 @@ public class AdminController {
         var listingStatus = status != null
             ? com.realestate.entity.Property.ListingStatus.valueOf(status.toUpperCase())
             : null;
-        return ResponseEntity.ok(propertyService.getAllListings(listingStatus, pageable));
+        return ResponseEntity.ok(propertyService.getAllListings(listingStatus, q, pageable));
     }
 
     @GetMapping("/listings/{id}")
@@ -127,22 +128,35 @@ public class AdminController {
     ) {}
 
     @GetMapping("/users")
-    @Operation(summary = "List all users with optional role filter")
+    @Operation(summary = "List all users with optional role filter and text search (name / email)")
     public ResponseEntity<Page<AdminUserResponse>> getUsers(
             @RequestParam(required = false) String role,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, size,
             Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        if (role != null) {
-            User.Role userRole = User.Role.valueOf(role.toUpperCase());
-            List<User> users = userRepository.findAllByRole(userRole);   // single DB call
-            List<AdminUserResponse> dtos = users.stream().map(this::toAdminUserResponse).toList();
-            return ResponseEntity.ok(new PageImpl<>(dtos, pageable, dtos.size()));
-        }
-        return ResponseEntity.ok(userRepository.findAll(pageable).map(this::toAdminUserResponse));
+        User.Role userRole = role != null ? User.Role.valueOf(role.toUpperCase()) : null;
+
+        // Single paginated query for any role/q combination. (The old role path
+        // loaded every matching user and ignored the page param entirely.)
+        org.springframework.data.jpa.domain.Specification<User> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            if (userRole != null) {
+                predicates.add(cb.equal(root.get("role"), userRole));
+            }
+            if (q != null && !q.isBlank()) {
+                String pattern = "%" + q.trim().toLowerCase() + "%";
+                predicates.add(cb.or(
+                    cb.like(cb.lower(root.get("name")),  pattern),
+                    cb.like(cb.lower(root.get("email")), pattern)
+                ));
+            }
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+        return ResponseEntity.ok(userRepository.findAll(spec, pageable).map(this::toAdminUserResponse));
     }
 
     private AdminUserResponse toAdminUserResponse(User u) {

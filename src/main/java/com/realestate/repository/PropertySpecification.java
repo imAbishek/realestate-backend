@@ -21,6 +21,34 @@ import java.util.List;
  */
 public class PropertySpecification {
 
+    /**
+     * Admin listings filter — unlike {@link #build}, it does NOT pin status to ACTIVE:
+     * admins see every status. Optional status filter + optional free-text search
+     * across title, locality name, and city name.
+     */
+    public static Specification<Property> adminFilter(Property.ListingStatus status, String q) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            if (q != null && !q.isBlank()) {
+                String pattern = "%" + q.trim().toLowerCase() + "%";
+                Join<Object, Object> locality = root.join("locality", JoinType.LEFT);
+                Join<Object, Object> city     = locality.join("city", JoinType.LEFT);
+                predicates.add(cb.or(
+                    cb.like(cb.lower(root.get("title")),    pattern),
+                    cb.like(cb.lower(locality.get("name")), pattern),
+                    cb.like(cb.lower(city.get("name")),     pattern)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
     public static Specification<Property> build(PropertySearchRequest req) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
