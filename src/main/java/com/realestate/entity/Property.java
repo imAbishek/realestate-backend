@@ -253,7 +253,7 @@ public class Property {
         DRAFT, PENDING_REVIEW, ACTIVE, EXPIRED, REJECTED, SOLD_RENTED
     }
 
-    public enum ListedBy { OWNER, PROMOTER }
+    public enum ListedBy { OWNER, PROMOTER, AGENT }
 
     public enum ApprovalAuthority { DTCP, CMDA, TNHB, CMA, RERA, LOCAL, OTHER, NONE }
 
