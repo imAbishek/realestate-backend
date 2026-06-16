@@ -63,9 +63,6 @@ public class SecurityConfig {
                 // Auth endpoints — always public
                 .requestMatchers("/auth/**").permitAll()
 
-                // TEMPORARY — Sentry smoke test route (DELETE with DebugController)
-                .requestMatchers("/debug/**").permitAll()
-
                 // Swagger UI — public in dev, blocked in prod via app config
                 .requestMatchers(
                     "/swagger-ui/**",
