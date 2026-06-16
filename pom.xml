@@ -27,6 +27,7 @@
         <springdoc.version>2.5.0</springdoc.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.32</lombok.version>
+        <sentry.version>7.18.1</sentry.version>
     </properties>
 
     <!-- FIX 1: AWS BOM belongs in dependencyManagement, NOT in dependencies -->
@@ -163,6 +164,21 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- OBSERVABILITY — Sentry error monitoring.
+             Inert unless SENTRY_DSN is set (prod), so dev/test/CI are unaffected.
+             sentry-logback ships ERROR-level logs (incl. GlobalExceptionHandler's
+             log.error on 5xx) to Sentry as events with full stack traces. -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-logback</artifactId>
+            <version>${sentry.version}</version>
         </dependency>
 
         <!-- TESTING -->

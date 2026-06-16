@@ -1,0 +1,15 @@
+# Dependabot — automated dependency + security update PRs (OWASP A03: Supply Chain).
+# GitHub also surfaces known-vulnerable deps here via security updates.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "backend"]
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "ci"]
