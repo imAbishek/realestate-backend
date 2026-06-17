@@ -72,6 +72,12 @@ public class AppProperties {
     public static class Mail {
         private String from;
         private String fromName;
+        /**
+         * SendGrid Web API key, used by SendGridEmailTransport (prod profile).
+         * Sent over HTTPS (port 443) because Render blocks outbound SMTP ports.
+         * Defaults to MAIL_PASSWORD so the existing SMTP key is reused.
+         */
+        private String apiKey;
     }
 
     // ─────────────────────────────────────────────

@@ -1,12 +1,7 @@
 package com.realestate.service;
 
-import com.realestate.config.AppProperties;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -14,14 +9,16 @@ import org.springframework.stereotype.Service;
  * Sends transactional emails.
  * Methods are @Async so they don't slow down the HTTP response —
  * email sending happens in a background thread.
+ *
+ * The actual delivery is delegated to a profile-selected {@link EmailTransport}
+ * (SMTP in dev, SendGrid HTTPS API in prod).
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender  mailSender;
-    private final AppProperties   appProperties;
+    private final EmailTransport emailTransport;
 
     // ─────────────────────────────────────────────
     // Email verification OTP
@@ -107,24 +104,6 @@ public class EmailService {
     // ─────────────────────────────────────────────
 
     private void sendHtmlEmail(String to, String subject, String htmlBody) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(
-                appProperties.getMail().getFrom(),
-                appProperties.getMail().getFromName()
-            );
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlBody, true);   // true = HTML
-
-            mailSender.send(message);
-            log.debug("Email sent to: {} | Subject: {}", to, subject);
-
-        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
-            // Log but don't throw — email failure shouldn't break the API response
-            log.error("Failed to send email to {}: {}", to, e.getMessage());
-        }
+        emailTransport.send(to, subject, htmlBody);
     }
 }
