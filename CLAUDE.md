@@ -58,7 +58,10 @@ com/realestate/
     ├── StorageService.java             # Interface: uploadPropertyImage / deleteImage / deleteAllPropertyImages
     ├── ImageUploadService.java         # StorageService impl — dev profile (!prod), local filesystem
     ├── S3StorageService.java           # StorageService impl — prod profile, S3-compatible (AWS or R2/MinIO)
-    └── EmailService.java               # OTP + inquiry notification emails (async)
+    ├── EmailService.java               # OTP + inquiry notification emails (async); builds HTML, delegates send
+    ├── EmailTransport.java             # Interface: send(to, subject, html) — profile-selected impl
+    ├── SmtpEmailTransport.java         # EmailTransport impl — dev (!prod), JavaMailSender/SMTP (Mailtrap)
+    └── SendGridEmailTransport.java     # EmailTransport impl — prod, SendGrid Web API over HTTPS (Render blocks SMTP)
 ```
 
 ## Database
