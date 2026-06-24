@@ -81,6 +81,7 @@ com/realestate/
 - PropertyType:     APARTMENT, INDEPENDENT_HOUSE, VILLA, PLOT, COMMERCIAL_OFFICE,
                     COMMERCIAL_SHOP, BUILDER_FLOOR, PG_HOSTEL
 - FurnishingStatus: UNFURNISHED, SEMI_FURNISHED, FULLY_FURNISHED
+- PreferredTenant:  FAMILY, BACHELOR_MEN, BACHELOR_WOMEN, ANYONE  (rent/PG only)
 - PriceUnit:        TOTAL, PER_MONTH, PER_SQFT
 
 ## Security rules (from SecurityConfig.java)

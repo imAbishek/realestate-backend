@@ -102,6 +102,11 @@ public class Property {
     @Builder.Default
     private boolean parkingAvailable = false;
 
+    // Who the lister prefers as a tenant — only meaningful for RENT / PG listings.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "preferred_tenant", length = 20)
+    private PreferredTenant preferredTenant;
+
     // ── Location ──────────────────────────────────
     @Column(name = "address_line", columnDefinition = "TEXT")
     private String addressLine;
@@ -246,6 +251,8 @@ public class Property {
     }
 
     public enum FurnishingStatus { UNFURNISHED, SEMI_FURNISHED, FULLY_FURNISHED }
+
+    public enum PreferredTenant { FAMILY, BACHELOR_MEN, BACHELOR_WOMEN, ANYONE }
 
     public enum PriceUnit { TOTAL, PER_MONTH, PER_SQFT }
 

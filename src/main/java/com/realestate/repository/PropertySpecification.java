@@ -60,10 +60,16 @@ public class PropertySpecification {
             if (req.getListingType() != null) {
                 predicates.add(cb.equal(root.get("listingType"), req.getListingType()));
             }
+            if (req.getListingTypes() != null && !req.getListingTypes().isEmpty()) {
+                predicates.add(root.get("listingType").in(req.getListingTypes()));
+            }
 
             // ── Property type (apartment / villa / etc.) ─
             if (req.getPropertyType() != null) {
                 predicates.add(cb.equal(root.get("propertyType"), req.getPropertyType()));
+            }
+            if (req.getPropertyTypes() != null && !req.getPropertyTypes().isEmpty()) {
+                predicates.add(root.get("propertyType").in(req.getPropertyTypes()));
             }
 
             // ── City (join through locality → city) ───────
@@ -111,6 +117,9 @@ public class PropertySpecification {
             // ── Furnishing ────────────────────────────────
             if (req.getFurnishing() != null) {
                 predicates.add(cb.equal(root.get("furnishing"), req.getFurnishing()));
+            }
+            if (req.getFurnishings() != null && !req.getFurnishings().isEmpty()) {
+                predicates.add(root.get("furnishing").in(req.getFurnishings()));
             }
 
             // ── Featured only ─────────────────────────────

@@ -131,6 +131,7 @@ public class PropertyService {
                 ? req.getAgeOfProperty().shortValue() : null)
             .availableFrom(req.getAvailableFrom())
             .parkingAvailable(req.isParkingAvailable())
+            .preferredTenant(req.getPreferredTenant())
             .addressLine(req.getAddressLine())
             .latitude(req.getLatitude())
             .longitude(req.getLongitude())
@@ -207,6 +208,7 @@ public class PropertyService {
         property.setLatitude(req.getLatitude());
         property.setLongitude(req.getLongitude());
         property.setParkingAvailable(req.isParkingAvailable());
+        property.setPreferredTenant(req.getPreferredTenant());
 
         // ── Phase B wizard fields ─────────────────
         if (req.getListedBy() != null) property.setListedBy(req.getListedBy());
@@ -586,6 +588,7 @@ public class PropertyService {
             .ageOfProperty(p.getAgeOfProperty() != null ? (int) p.getAgeOfProperty() : null)
             .availableFrom(p.getAvailableFrom())
             .parkingAvailable(p.isParkingAvailable())
+            .preferredTenant(p.getPreferredTenant() != null ? p.getPreferredTenant().name() : null)
             .addressLine(p.getAddressLine())
             .latitude(p.getLatitude())
             .longitude(p.getLongitude())

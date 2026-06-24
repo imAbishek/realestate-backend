@@ -66,6 +66,10 @@ public class PropertyDtos {
         private LocalDate availableFrom;
         private boolean parkingAvailable;
 
+        // Only meaningful for RENT / PG; frontend sends it only for those listing types.
+        private Property.PreferredTenant preferredTenant;
+
+        @NotBlank(message = "Full address is required")
         private String addressLine;
         private BigDecimal latitude;
         private BigDecimal longitude;
@@ -167,6 +171,7 @@ public class PropertyDtos {
         private Integer ageOfProperty;
         private LocalDate availableFrom;
         private boolean parkingAvailable;
+        private String preferredTenant;
 
         private String addressLine;
         private BigDecimal latitude;

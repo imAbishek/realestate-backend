@@ -4,6 +4,7 @@ import com.realestate.entity.Property;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -23,9 +24,15 @@ public class PropertySearchRequest {
     private String citySlug;
     private UUID   localityId;
 
-    // Type filters
+    // Type filters — single value (kept for backward compat / simple links)
     private Property.ListingType    listingType;
     private Property.PropertyType   propertyType;
+
+    // Multi-select filters — when non-empty, matched with IN (union).
+    // Combine with the single-value fields above via AND.
+    private List<Property.ListingType>      listingTypes;
+    private List<Property.PropertyType>     propertyTypes;
+    private List<Property.FurnishingStatus> furnishings;
 
     // Price
     private BigDecimal minPrice;
